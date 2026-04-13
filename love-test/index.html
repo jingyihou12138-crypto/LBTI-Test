@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>恋爱人格测试 💘</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  min-height: 100vh;
+  background: #ffffff;
+  display: flex;
+  justify-content: center;
+  color: #111;
+}
+
+.app {
+  width: 100%;
+  max-width: 480px;
+  position: relative;
+}
+
+/* ── Screens ── */
+.screen { display: none; min-height: 100vh; }
+.screen.active {
+  display: block;
+  animation: fadeSlideUp 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════════
+   START SCREEN
+══════════════════════════════════════ */
+.start-hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 28px 60px;
+  gap: 18px;
+}
+
+.start-pulse {
+  font-size: 76px;
+  line-height: 1;
+  animation: pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.1); }
+}
+
+.start-title {
+  font-size: 32px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #FF5FA0, #B94CDD);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.25;
+}
+
+.start-sub {
+  font-size: 15px;
+  color: #999;
+  line-height: 1.7;
+  max-width: 290px;
+}
+
+.start-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 330px;
+}
+.chip {
+  background: white;
+  border: 1.5px solid #FFCCE0;
+  color: #E060A8;
+  border-radius: 20px;
+  padding: 5px 13px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btn-start {
+  background: linear-gradient(135deg, #FF5FA0, #B94CDD);
+  color: white;
+  border: none;
+  border-radius: 32px;
+  padding: 16px 52px;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(185, 76, 221, 0.38);
+  transition: transform 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.3px;
+  margin-top: 6px;
+}
+.btn-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(185, 76, 221, 0.48);
+}
+.btn-start:active { transform: translateY(0); }
+
+.start-hint { font-size: 12px; color: #ccc; margin-top: -4px; }
+
+/* ══════════════════════════════════════
+   QUIZ SCREEN
+══════════════════════════════════════ */
+.quiz-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 14px 20px 10px;
+  background: rgba(255,255,255,0.97);
+  border-bottom: 1px solid #f0f0f0;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.quiz-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.q-counter { font-size: 13px; color: #bbb; }
+.q-counter strong { font-size: 16px; color: #E060A8; }
+.q-group-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #B94CDD;
+  background: #F5E5FF;
+  border-radius: 12px;
+  padding: 3px 10px;
+  letter-spacing: 0.3px;
+}
+
+.progress-bar {
+  height: 4px;
+  background: rgba(185, 76, 221, 0.14);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FF5FA0, #B94CDD);
+  border-radius: 4px;
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.quiz-body { padding: 20px 20px 0; }
+
+.q-text {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1A1A2E;
+  line-height: 1.65;
+  margin-bottom: 20px;
+}
+
+.options { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+
+.opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: white;
+  border: 2px solid #EEE0F0;
+  border-radius: 18px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.15s, background 0.18s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  width: 100%;
+}
+.opt:hover {
+  border-color: #FF8BBF;
+  box-shadow: 0 4px 18px rgba(255, 95, 160, 0.2);
+  transform: translateY(-1px);
+}
+.opt.selected {
+  border-color: #B94CDD;
+  background: linear-gradient(135deg, #FFF0FA, #F7E8FF);
+  box-shadow: 0 5px 22px rgba(185, 76, 221, 0.22);
+}
+
+.opt-letter {
+  width: 30px; height: 30px; min-width: 30px;
+  border-radius: 50%;
+  background: #F2E2FF;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 13px; color: #B94CDD;
+  transition: background 0.18s, color 0.18s;
+  flex-shrink: 0;
+}
+.opt:hover .opt-letter { background: #FFD6ED; color: #E060A8; }
+.opt.selected .opt-letter {
+  background: linear-gradient(135deg, #FF5FA0, #B94CDD);
+  color: white;
+}
+
+.opt-text {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.6;
+  padding-top: 5px;
+  word-break: break-word;
+}
+.opt.selected .opt-text { color: #2D2D2D; font-weight: 500; }
+
+.quiz-nav {
+  display: flex;
+  gap: 12px;
+  padding: 0 20px 32px;
+}
+.btn-prev {
+  flex: 1;
+  padding: 14px;
+  border-radius: 16px;
+  border: 2px solid #EEE0EE;
+  background: white;
+  color: #AAA;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s;
+}
+.btn-prev:hover:not(:disabled) { border-color: #B94CDD; color: #B94CDD; }
+.btn-prev:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.btn-next {
+  flex: 2;
+  padding: 14px;
+  border-radius: 16px;
+  border: none;
+  background: linear-gradient(135deg, #FF5FA0, #B94CDD);
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(185, 76, 221, 0.32);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.18s;
+}
+.btn-next:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(185, 76, 221, 0.42);
+}
+.btn-next:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* ══════════════════════════════════════
+   LOADING SCREEN
+══════════════════════════════════════ */
+.loading-wrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.loading-icon {
+  font-size: 52px;
+  animation: spinY 1.6s linear infinite;
+}
+@keyframes spinY {
+  from { transform: rotateY(0deg); }
+  to   { transform: rotateY(360deg); }
+}
+.loading-txt { font-size: 16px; color: #AAA; font-weight: 500; }
+.loading-dots::after {
+  content: '';
+  animation: dots 1.4s steps(3, end) infinite;
+}
+@keyframes dots {
+  0%   { content: ''; }
+  33%  { content: '.'; }
+  66%  { content: '..'; }
+  100% { content: '...'; }
+}
+
+/* ══════════════════════════════════════
+   RESULT SCREEN
+══════════════════════════════════════ */
+.result-hero {
+  margin: 24px 20px 16px;
+  border-radius: 28px;
+  padding: 32px 24px 28px;
+  color: white;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.result-hero::before {
+  content: '';
+  position: absolute; top: -50%; right: -15%;
+  width: 220px; height: 220px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 50%;
+}
+.result-hero::after {
+  content: '';
+  position: absolute; bottom: -40%; left: -10%;
+  width: 160px; height: 160px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 50%;
+}
+
+.hero-img-wrap {
+  position: relative;
+  width: 200px;
+  margin: 0 auto 16px;
+  z-index: 1;
+}
+.hero-img {
+  width: 100%;
+  height: auto;
+  border-radius: 22px;
+  display: block;
+  border: 3px solid rgba(255,255,255,0.75);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+}
+.hero-emoji-badge {
+  position: absolute;
+  bottom: -8px; right: -8px;
+  font-size: 22px;
+  background: rgba(255,255,255,0.96);
+  border-radius: 50%;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+  line-height: 1;
+}
+.hero-name  { font-size: 28px; font-weight: 900; position: relative; z-index: 1; margin-bottom: 8px; }
+.hero-tag   { font-size: 14px; opacity: 0.9; position: relative; z-index: 1; margin: 0 auto 22px; line-height: 1.65; max-width: 300px; text-align: center; }
+.hero-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.22);
+  border: 1.5px solid rgba(255,255,255,0.45);
+  border-radius: 28px;
+  padding: 9px 22px;
+  font-size: 15px;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+}
+.hero-score span { font-size: 22px; font-weight: 900; }
+.result-full-desc { font-size: 14.5px; color: #555; line-height: 1.88; }
+
+/* Card sections */
+.card {
+  margin: 0 20px 14px;
+  background: white;
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow: 0 2px 18px rgba(0,0,0,0.06);
+}
+.card-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #CCC;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.result-desc { font-size: 14px; color: #555; line-height: 1.75; }
+
+.traits { display: flex; flex-wrap: wrap; gap: 8px; }
+.trait {
+  background: #F5E8FF;
+  color: #B94CDD;
+  border-radius: 20px;
+  padding: 6px 15px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chart-wrap { position: relative; height: 210px; }
+
+/* Runner-ups */
+.runners { display: flex; flex-direction: column; gap: 12px; }
+.runner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.runner-rank {
+  width: 26px; height: 26px; min-width: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; color: white;
+}
+.rank-2 { background: #B8B8B8; }
+.rank-3 { background: #CD8C5A; }
+.runner-emoji { font-size: 24px; width: 32px; text-align: center; }
+.runner-info { flex: 1; }
+.runner-name { font-size: 14px; font-weight: 700; color: #333; }
+.runner-sub  { font-size: 12px; color: #BBB; margin-top: 1px; }
+.runner-pct  { font-size: 14px; font-weight: 800; color: #B94CDD; }
+
+.result-footer { padding: 8px 20px 48px; }
+.btn-retry {
+  width: 100%;
+  padding: 15px;
+  border-radius: 18px;
+  border: 2px solid #EEE0EE;
+  background: white;
+  font-size: 15px;
+  font-weight: 700;
+  color: #B94CDD;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+}
+.btn-retry:hover { background: #F8EEFF; border-color: #B94CDD; }
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #EEE0F0, transparent);
+  margin: 4px 0 14px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ══ START ══ -->
+  <div id="s-start" class="screen active">
+    <div class="start-hero">
+      <div class="start-pulse">💘</div>
+      <h1 class="start-title">恋爱人格测试</h1>
+      <p class="start-sub">LBTI震撼袭来，请大家多多关心吧🤲。<br>闺蜜你相信我，我这次是真的有预感了。</p>
+      <button class="btn-start" onclick="startQuiz()">开始测试 →</button>
+      <p class="start-hint">大约需要 3 分钟</p>
+    </div>
+  </div>
+
+  <!-- ══ QUIZ ══ -->
+  <div id="s-quiz" class="screen">
+    <div class="quiz-sticky">
+      <div class="quiz-meta">
+        <span class="q-counter">第 <strong id="q-num">1</strong> / 16 题</span>
+        <span class="q-group-badge" id="q-badge"></span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="q-progress" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="quiz-body">
+      <div class="q-text" id="q-text"></div>
+      <div class="options" id="q-opts"></div>
+    </div>
+    <div class="quiz-nav">
+      <button class="btn-prev" id="btn-prev" onclick="prevQ()">← 上一题</button>
+      <button class="btn-next" id="btn-next" onclick="nextQ()">下一题 →</button>
+    </div>
+  </div>
+
+  <!-- ══ LOADING ══ -->
+  <div id="s-load" class="screen">
+    <div class="loading-wrap">
+      <div class="loading-icon">🔮</div>
+      <div class="loading-txt">正在解析你的恋爱人格<span class="loading-dots"></span></div>
+    </div>
+  </div>
+
+  <!-- ══ RESULT ══ -->
+  <div id="s-result" class="screen">
+    <!-- Hero card -->
+    <div class="result-hero" id="r-hero">
+      <div class="hero-img-wrap">
+        <img class="hero-img" id="r-img" src="" alt="">
+        <div class="hero-emoji-badge" id="r-emoji"></div>
+      </div>
+      <div class="hero-name"  id="r-name"></div>
+      <div class="hero-tag"   id="r-tag"></div>
+      <div class="hero-score">与你的匹配度：<span id="r-score"></span> 分</div>
+    </div>
+
+    <!-- Full Description -->
+    <div class="card">
+      <div class="card-title">人格详解</div>
+      <div class="result-full-desc" id="r-full-desc"></div>
+    </div>
+
+    <!-- Traits -->
+    <div class="card">
+      <div class="card-title">你的恋爱关键词</div>
+      <div class="traits" id="r-traits"></div>
+    </div>
+
+    <!-- Radar chart -->
+    <div class="card">
+      <div class="card-title">维度雷达</div>
+      <div class="chart-wrap">
+        <canvas id="r-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Runner-ups -->
+    <div class="card">
+      <div class="card-title">相近人格</div>
+      <div class="runners" id="r-runners"></div>
+    </div>
+
+    <div class="result-footer">
+      <button class="btn-retry" onclick="resetQuiz()">🔄 再测一次</button>
+    </div>
+  </div>
+
+</div><!-- .app -->
+
+<script>
+/* ─────────────────────────────────────────
+   DATA: 16 Questions
+───────────────────────────────────────── */
+const QS = [
+  {
+    id:1, dim:'F1', badge:'心动 · 上头速度',
+    text:'忽然从天而降一个帅过车银优、美过裴秀智，性格好条件好气质好人品好完全长在你理想型上的人哭着喊着说爱你，你的反应是：',
+    opts:{
+      A:'八个凡是要牢记，谨防网络杀猪盘。先观察一阵再说',
+      B:'有点小激动，但还能按时吃饭睡觉',
+      C:'hello，帅哥/美女～（吹口哨）（摘下墨镜）（单手撑墙）（右腿弯曲绕到左腿后）（wink）'
+    }
+  },
+  {
+    id:2, dim:'F1', badge:'心动 · 上头速度',
+    text:'你相信一见钟情吗？',
+    opts:{
+      A:'我不信。。',
+      B:'还好吧',
+      C:'当然了！！！ovo'
+    }
+  },
+  {
+    id:3, dim:'F2', badge:'心动 · 心动导向',
+    text:'一个新的人出现在你面前，最容易让你心动的是：',
+    opts:{
+      A:'ta情绪稳定、靠谱踏实，让我觉得跟ta在一起很安心',
+      B:'两个都看',
+      C:'那种说不清道不明的感觉对了，气氛一到位我就容易上头'
+    }
+  },
+  {
+    id:4, dim:'F3', badge:'心动 · 慕强倾向',
+    text:'你更容易喜欢上的人通常是：',
+    opts:{
+      A:'随缘，相处舒服就好',
+      B:'既有点能力，又会照顾别人感受的',
+      C:'必须比我厉害！'
+    }
+  },
+  {
+    id:5, dim:'P1', badge:'表达 · 主动推进度',
+    text:'遇到感兴趣的人，你发起聊天/见面的频率是：',
+    opts:{
+      A:'敌不动我不动',
+      B:'看感觉，实在很想见才会主动一下',
+      C:'我的手机好像喜欢ta，总是想给ta发消息'
+    }
+  },
+  {
+    id:6, dim:'P2', badge:'表达 · 表达显性',
+    text:'喜欢一个人时，ta 能不能看出来？',
+    opts:{
+      A:'除非我自己说，不然谁都看不出来',
+      B:'仔细感受好像会发现一些小特别？',
+      C:'不瞎的话全世界都能看出来'
+    }
+  },
+  {
+    id:7, dim:'P3', badge:'表达 · 试探推拉',
+    text:'对你来说，恋爱最爽的是哪种阶段？',
+    opts:{
+      A:'名正言顺在一起，享受恋爱期',
+      B:'先暧昧一阵，再水到渠成官宣最好',
+      C:'暧昧期什么的最爽了嘿嘿嘿'
+    }
+  },
+  {
+    id:8, dim:'P3', badge:'表达 · 试探推拉',
+    text:'当你们的暧昧气氛有点太平淡时，你会怎么"加点料"？',
+    opts:{
+      A:'我是厨子吗？我不要。',
+      B:'对不起，我知道我们一直感情很好，也没有过什么争吵，但是我刚刚认真的想了很久，还是决定和你说实话，我要离开你了，我太困了我要去睡觉了。',
+      C:'我接下来会继续胡搅蛮缠装傻充愣的。'
+    }
+  },
+  {
+    id:9, dim:'C1', badge:'亲密 · 亲密需求',
+    text:'你理想中的见面频率是：',
+    opts:{
+      A:'偶尔见一次，距离产生美',
+      B:'看心情＋时间，有空多见，没空就线上',
+      C:'最好变成连体婴长在对方身上'
+    }
+  },
+  {
+    id:10, dim:'C1', badge:'亲密 · 亲密需求',
+    text:'怎么看待同居或 24 小时待在一起：',
+    opts:{
+      A:'达咩！连拉屎都不自由了！',
+      B:'可以，但必须给我留个打游戏/发呆的角落',
+      C:'爽ovo！！！！！'
+    }
+  },
+  {
+    id:11, dim:'C2', badge:'亲密 · 偏爱需求',
+    text:'发现对方对所有人都很温柔时，你的反应是：',
+    opts:{
+      A:'真好，遇到大善人了',
+      B:'不太开心，但能自己默默调节',
+      C:'忍不了了，一拳把中央空调打爆，他鸡蛋六舅的哈密瓜妹妹的大窝瓜的大鸡腿的大菠萝。'
+    }
+  },
+  {
+    id:12, dim:'C3', badge:'亲密 · 精神共鸣',
+    text:'你最期待和对方一起做的事情是：',
+    opts:{
+      A:'吃喝拉撒睡，轻松开心就行',
+      B:'既能一起玩，又能偶尔深度对话',
+      C:'半夜聊人生、聊理想、聊宇宙大爆炸、聊原生家庭和破碎的梦'
+    }
+  },
+  {
+    id:13, dim:'D1', badge:'不安全感 · 焦虑确认',
+    text:'对方半天没回消息，你的反应是：',
+    opts:{
+      A:'估计是在拉屎，我也去干点别的',
+      B:'你真的这么高冷吗，要是我每天给你52个0元呢？而且坚持每天都给呢？',
+      C:'宝宝，我不知道你已读不回是什么意思？是我的回复你不满意呢还是嫌我烦，还是想分开了。我有时候确实挺烦的，也不会聊天，给不了你满意的回复，我向你道歉以后可以别敷衍我了吗。我始终觉得幸福的定义，不仅仅是爱情那扇门我不敢敲开，我看你朋友圈发现你已经开始新的生活了，我希望自己和你一样潇洒自由。开弓没有回头箭我们结束了就再也没有以后了，这么久了我一直没有忘记你如果能重来我想我一定能做的更好。我永远爱你祝你幸福。'
+    }
+  },
+  {
+    id:14, dim:'D2', badge:'不安全感 · 回避撤退',
+    text:'吵架时，你的第一反应：',
+    opts:{
+      A:'忍不了了，赶紧把事情给我说清楚。',
+      B:'先躲一会儿冷静，然后再看情况沟通',
+      C:'手机关机，微信拉黑，坐火箭逃离地球'
+    }
+  },
+  {
+    id:15, dim:'D2', badge:'不安全感 · 回避撤退',
+    text:'暧昧中，听到对方问"所以我们现在到底是什么关系？"，你的反应是：',
+    opts:{
+      A:'TA是不是也对我有意思啊，来，官宣！',
+      B:'嗯就是这个那个的关系啊…嗯嗯额',
+      C:'啊啊啊啊啊五雷轰顶晴天霹雳口吐白沫托马斯回旋逃离地球，还我宝贵的暧昧期！'
+    }
+  },
+  {
+    id:16, dim:'D3', badge:'不安全感 · 控制引导欲',
+    text:'对方哭着喊着说要做一只吗喽，你的反应是：',
+    opts:{
+      A:'尊重祝福，这年头谁还没点毛病',
+      B:'试探性提个意见，实在不行凑合过也行',
+      C:'切换饲养员模式，今天投喂香蕉，明天训练坐下握手'
+    }
+  }
+];
+
+/* ─────────────────────────────────────────
+   DATA: 18 Personality Templates
+   code format: F1F2F3-P1P2P3-C1C2C3-D1D2D3
+───────────────────────────────────────── */
+const TEMPLATES = [
+  {
+    id:'DOGG', name:'DOGG 狗勾', emoji:'🐶',
+    tag:'上头快、真诚爆棚、黏人小狗狗',
+    color:'#FF8C42', colorDark:'#D96820',
+    code:'HHM-HHM-HHM-MML',
+    image:'LBTI/DOGG.png',
+    shortDesc:'你主打一个真诚是必杀技，像小狗狗一样把所有的爱都翻肚皮亮给ta。',
+    fullDesc:'ta出门你摇尾巴，ta回家你转圈圈，ta多看别人一眼你的耳朵当场耷拉下来。认定一个人就掏心掏肺，把全世界最直白热烈的爱意都给ta，内心疯狂os："宝宝，今天也超级喜欢你！"',
+    traits:['热情外放','黏人无害','真诚爆棚','小小焦虑']
+  },
+  {
+    id:'TEAR', name:'TEAR 林黛玉', emoji:'😢',
+    tag:'高敏感体质，爱得深沉易情绪内耗',
+    color:'#6B9FFF', colorDark:'#4070DD',
+    code:'MHH-MMM-HHM-HML',
+    image:'LBTI/TEAR.png',
+    shortDesc:'大家都在逢场作戏，只有你拿着显微镜，在ta的每一个标点符号里找爱你的证据。',
+    fullDesc:'作为恋爱界"自带显微镜的人形雷达"，对方消息晚回一分钟，你已经脑补了十集甄嬛传。对方发来一个"哦"，你的大脑瞬间会拉响一级警报，在对话框里反复打出八百字小作文又怂得全选删除，最后只敢发个搞笑表情包小心翼翼地试探。别人看你像是在无风起浪、疯狂内耗，但剥开这层草木皆兵的外壳，实际上你只是太在意你们的关系。',
+    traits:['高敏感','情绪内耗','需要偏爱','灵魂共鸣']
+  },
+  {
+    id:'DRUM', name:'DRUM 退堂鼓', emoji:'🐢',
+    tag:'高冷怂货，关系一确定就想逃',
+    color:'#7CAF55', colorDark:'#508030',
+    code:'LML-LLL-MMH-LHL',
+    image:'LBTI/DRUM.png',
+    shortDesc:'敌进你退，敌退你打车跑。',
+    fullDesc:'退堂鼓十级表演艺术家，民政局门口都能临时反悔那种。表面说着"算了算了，别麻烦"，却又在心里偷偷期待有人能一眼看穿自己的胆小和小心翼翼。每次想表白，话到嘴边自动变成"今天天气不错"。一感受到不确定就先把退场路线规划好，实际上在等待属于自己的引导型恋人出现，但在此之前，你会继续敲鼓——咚咚咚，是心动的声音，也是逃跑的号角。喜欢的话，要说话呀。',
+    traits:['高度回避','怕承诺','内心戏多','需要精神共鸣']
+  },
+  {
+    id:'CUPP', name:'CUPP 保温杯', emoji:'☕',
+    tag:'平平淡淡才是真，岁月静好派',
+    color:'#D4956A', colorDark:'#A86840',
+    code:'LLM-MML-MLL-LLM',
+    image:'LBTI/CUPP.png',
+    shortDesc:'平平淡淡才是真，保温杯里泡枸杞。',
+    fullDesc:'恋爱像保温杯里的热水，24 小时恒温，不烫嘴，也不凉透。你是恋爱界的养生大师，别人轰轰烈烈，你默默给ta发"记得穿秋裤"。约会项目是逛菜市场，浪漫情话是"今天排骨打折"。分手理由可能是"ta吃香菜"。你的恋爱观：细水长流，流不动就喝口水歇会儿再流。',
+    traits:['平淡安稳','不折腾','踏实可靠','低焦虑']
+  },
+  {
+    id:'PULL', name:'PULL 推拉大师', emoji:'🧲',
+    tag:'若即若离让你摸不透，沉迷推拉游戏',
+    color:'#9B59B6', colorDark:'#6E2D8A',
+    code:'MHM-HMH-MHM-MHL',
+    image:'LBTI/PULL.png',
+    shortDesc:'太极宗师转世，极致推拉王者。最怕听到的话："所以我们现在是什么关系了？"',
+    fullDesc:'你的恋爱哲学：距离产生美，美产生距离，距离又产生美……循环播放。ta靠近你就后退两步，ta转身你就拽住衣角，主打一个"别走，也别过来"。暧昧期可以无限续杯，但千万别问"我们是什么关系"——问就是"你觉得呢？"然后把问题像太极球一样推回去。你的人生格言：确定关系是浪漫的坟墓，而我，想永远住在前厅。',
+    traits:['推拉高手','暧昧达人','时冷时热','高情商撤退']
+  },
+  {
+    id:'RUSH', name:'RUSH 直球之王', emoji:'💥',
+    tag:'直球攻势，来得猛去得也快',
+    color:'#E74C3C', colorDark:'#B02010',
+    code:'HMM-HHL-MML-LLM',
+    image:'LBTI/RUSH.png',
+    shortDesc:'随时准备开始一场入室抢劫般的爱情。',
+    fullDesc:'你的恋爱信条就是：喜欢为什么不说，留着等过年吗？看上了就夸，心动了就冲，想见面就发，想牵手就试探，主打一个"感情要是能靠暗示解决，还要嘴干嘛？"',
+    traits:['直球攻势','行动派','不焦虑','爱得清爽']
+  },
+  {
+    id:'GUID', name:'GUID 主人', emoji:'👑',
+    tag:'成熟稳重年上感，稳稳接住你',
+    color:'#2980B9', colorDark:'#145680',
+    code:'MLM-HML-MML-LLM',
+    image:'LBTI/GUID.png',
+    shortDesc:'无须多言，伟大的引导型恋人。',
+    fullDesc:'你在恋爱里自带导航系统，别人慌的时候你稳，别人拧巴的时候你理，别人"随便"的时候你已经把餐厅、电影和回家路线都安排完了。你不是那种光会下指令的空心领导，你是真的有种"别怕，跟我走"的安全感。对方越没头绪，你越来劲；对方越摇摆，你越想把ta从情绪泥潭里拎出来洗一洗晾干。你最擅长的不是说情话，而是让人觉得"有你在，好像事情都会变好"。',
+    traits:['成熟稳重','主动有分寸','高安全感','慢热走心']
+  },
+  {
+    id:'SOLO', name:'SOLO 寡王', emoji:'🪨',
+    tag:'无欲无求，享受一个人的自在',
+    color:'#607D8B', colorDark:'#37515C',
+    code:'LML-LLL-LLM-LHL',
+    image:'LBTI/SOLO.png',
+    shortDesc:'爱你老己，只有你是真的听进去了。封心锁爱，电子木鱼敲到冒烟。',
+    fullDesc:'你是恋爱界的佛系玩家，功德池比恋爱脑发达。别人秀恩爱，你在敲木鱼；别人分手哭，你在敲木鱼；别人问你为什么还单身，你面无表情："阿弥陀佛，情债已还清。"桃花开了倍你当柴劈，丘比特来了你说慢走不送。你的恋爱史约等于一张白纸，但你活得比谁都通透——毕竟恋爱会让人变蠢，而你，从未蠢过。电子木鱼敲到冒烟，功德+1+1+1……孤独终老套餐已下单。',
+    traits:['无欲无求','极度独立','难以上头','需要征服']
+  },
+  {
+    id:'ALIEN', name:'ALIEN 外星人', emoji:'👾',
+    tag:'脑回路清奇，恋爱风格独树一帜',
+    color:'#1ABC9C', colorDark:'#0E8870',
+    code:'LHM-MLM-MMH-LML',
+    image:'LBTI/ALIEN.png',
+    shortDesc:'不知道，我的脑回路很曼妙。',
+    fullDesc:'精神状态领先人类十年，脑回路永远在第五层。恋爱界的5G信号塔，但信号源来自外太空。上一秒在跟别人聊今晚吃什么，下一秒突然问人家"你觉得外星人便秘吗？"你的脑回路是九曲十八弯的过山车，对方永远跟不上你的节奏。',
+    traits:['脑回路清奇','喜欢氛围感','精神共鸣优先','不按套路']
+  },
+  {
+    id:'BOSS', name:'BOSS 王者', emoji:'💪',
+    tag:'慕强且强，恋爱是势均力敌的较量',
+    color:'#F39C12', colorDark:'#B86C00',
+    code:'MLH-HMM-MMM-LLH',
+    image:'LBTI/BOSS.png',
+    shortDesc:'极致慕强，主打一个高端局。',
+    fullDesc:'恋爱界的卷王，慕强批天花板。ta的择偶标准就一条：比我强。你绝不接受比自己弱的对象，因为你觉得那不是谈恋爱，那是做慈善。所以你单身的原因很简单：你太强了，强到整个地球都配不上你。',
+    traits:['慕强体质','双强吸引','势均力敌','略有控制欲']
+  },
+  {
+    id:'CREAM', name:'CREAM 香草冰激凌', emoji:'🍦',
+    tag:'均衡健康，稳定的恋爱好搭档',
+    color:'#E8A838', colorDark:'#B07800',
+    code:'MMM-MMM-MMM-MMM',
+    image:'LBTI/CREAM.png',
+    shortDesc:'正常人是全世界最稀缺的物种。',
+    fullDesc:'你没有狗勾那么舔，没有林黛玉那么戏多，没有外星人那么离谱——你就是个正常人。会主动，会退让，会吵架，会和好，不作不闹不查手机，分手了也不会写小作文。听起来很完美对吧？但问题是：正常人根本找不到对象。因为世界上不正常的人太多了，剩下你一个人站在相亲市场，举着牌子："本人无雷点，求领走。"然而0人在意，只留下你独自扶额苦笑...',
+    traits:['均衡稳定','情绪健康','好沟通','标准好伴侣']
+  },
+  {
+    id:'FISH', name:'FISH 鱼', emoji:'🐟',
+    tag:'恋爱脑，被撩一下就全线沦陷',
+    color:'#3DBEFF', colorDark:'#0A88CC',
+    code:'HMM-MML-MMH-MLL',
+    image:'LBTI/FISH.png',
+    shortDesc:'王宝钏挖野菜找你借铲子，姜太公拍大腿问你为什么没早来。',
+    fullDesc:'"这次是真的分手了"——三天后，"其实我觉得ta不xxx的时候也挺好的。"你是恋爱界的钉子户，渣男渣女回收站终身会员。ta对你冷暴力，你觉得ta在忙；ta把你拉黑了，你换个号继续发"早安"。王宝钏挖了十八年野菜都得喊你一声师傅。姜太公钓鱼愿者上钩，看见你直接拍大腿："你要早来，我还用等到八十岁？"',
+    traits:['恋爱脑','容易沦陷','单向奔赴','渴望灵魂连接']
+  },
+  {
+    id:'ATM', name:'ATM-er 送钱者', emoji:'💸',
+    tag:'用付出证明爱，默默奉献的工具人',
+    color:'#27AE60', colorDark:'#0A7838',
+    code:'HML-MML-MMH-HLL',
+    image:'LBTI/ATM-er.png',
+    shortDesc:'习惯用物质与付出来证明爱，不太会提自己需求，直到有一天发现自己成了恋爱ATM。',
+    fullDesc:'你的恋爱公式：喜欢=花钱。ta说手机卡，你立刻下单最新款；ta说想去旅游，你直接订头等舱；ta说你真好，你感动到又转了个520。你从不提要求，因为你觉得"爱是不求回报"。直到有一天你发现，ta的通讯录里你的备注是"ATM"，挂咸鱼的东西叫"舔狗送的"。温馨提示：真正的爱不会让你插卡，更不会让你输密码。',
+    traits:['付出型','用行动表爱','高焦虑','精神共鸣渴望']
+  },
+  {
+    id:'MAMA', name:'MAMA 妈妈', emoji:'🫶',
+    tag:'照料型，把你照顾得妥妥帖帖',
+    color:'#E91E8C', colorDark:'#A80060',
+    code:'MHL-MML-HHM-MLM',
+    image:'LBTI/MAMA.png',
+    shortDesc:'早安问你吃了没，晚安提醒你早点睡，吵完架不是生气，是担心你衣服有没有穿够。',
+    fullDesc:'女则妈妈，男则男妈妈。你的恋爱关键词：喂饱、穿暖、别熬夜。ta说想你了，你回"吃饭了吗"；ta说我们吵架了，你回"记得多喝热水"；ta说要分手，你第一反应是"那你冬天的围巾还在我家"。你爱一个人的方式，就是把ta养成一个生活不能自理的巨婴。缺点是：儿/女大不中留，ta最后真的会叫你妈，然后去找一个会叫"宝贝"的。',
+    traits:['照料型','高占有欲','爱操心','贴心保姆']
+  },
+  {
+    id:'PLAY', name:'PLAY 养鱼者', emoji:'🎣',
+    tag:'中央空调，多线暧昧游刃有余',
+    color:'#FF6B6B', colorDark:'#CC3030',
+    code:'HMM-HHM-LLL-LHM',
+    image:'LBTI/PLAY.png',
+    shortDesc:'心碎成了很多片，每一片都爱上了不同的人。口头禅是："都是我的好朋友呀！"',
+    fullDesc:'人间端水大师，主打一个"雨露均沾"。手机里存着十几个人的备注，分别叫"杭州小张""北京小李""上海小王"，生怕搞混。每个鱼塘你都定期撒饲料，早安发一圈，晚安发一圈，节日祝福群发——但每条都加了"亲爱的"。你觉得你不是渣，你只是心碎成了太多片，每一片都需要一个家。直到有一天所有鱼同时问你"我们什么关系"，你终于崩了："我只是想给每个流浪的心一个家，有错吗？"',
+    traits:['中央空调','多线暧昧','低亲密需求','享受过程']
+  },
+  {
+    id:'ROBOT', name:'ROBOT 小机器人', emoji:'🤖',
+    tag:'情感模式需重新烧录，略显机械',
+    color:'#95A5A6', colorDark:'#607778',
+    code:'LML-MLM-LLM-MMM',
+    image:'LBTI/ROBOT.png',
+    shortDesc:'Loading...恋爱程序加载中...机器人的程序设定是爱你。',
+    fullDesc:'ta说"我爱你"，你在数据库里搜索了3秒才回复"我也爱你"，ta已经走了。你的优点是绝对忠诚，绝不劈腿，因为你的程序不支持多线程。你的缺点是太直男/直女，浪漫对你来说就是"发送一个爱心表情包（已执行）"。维修手册建议：找一个愿意给你写代码的恋人。',
+    traits:['情感理性','低需求','需要开机密码','不焦虑']
+  },
+  {
+    id:'DRAMA', name:'DRAMA 抓马', emoji:'🎭',
+    tag:'虐恋情深，没有起伏不叫爱情',
+    color:'#C0392B', colorDark:'#880000',
+    code:'HHH-MHM-HHM-HHM',
+    image:'LBTI/DRAMA.png',
+    shortDesc:'没有困难创造困难也要谈。',
+    fullDesc:'你是恋爱界的琼瑶剧编剧，每件小事都能演成大剧。ta迟到5分钟，你在咖啡店哭到崩溃："你是不是不爱我了？你是不是路上遇到了更好的人？"ta忘了纪念日，你当场写800字控诉信加一段RAP。你们吵架，全小区都知道；你们和好，全朋友圈都刷到。你的人生信条：不轰轰烈烈，算什么恋爱？缺点是：正常人跟你谈三个月直接累进ICU，而你还在喊"再来一条"。',
+    traits:['情感戏剧化','极易上头','强掌控欲','虐恋爱好者']
+  },
+  {
+    id:'CAT', name:'CAT 爵士豪猫', emoji:'🐱',
+    tag:'间歇性黏人，持续性高冷，真猫本猫',
+    color:'#8E44AD', colorDark:'#5A1880',
+    code:'MHM-MLM-LHM-LLM',
+    image:'LBTI/CATT.jpeg',
+    shortDesc:'不要试图掌控一只猫，你只能等ta来宠幸你。',
+    fullDesc:'间歇性黏人，持续性高冷。ta想抱你的时候你优雅闪避，ta忙的时候你踩ta的键盘。你想ta了？不，你不会想，你只会突然出现在ta面前，用下巴蹭ta一下，然后转身就走，留ta在原地怀疑人生。你的恋爱哲学：主动权永远在我爪里。你不需要恋人，你需要一个铲屎官。优点是：你永远是被追的那个。缺点是：追到你之后，对方会发现——你真的只是一只猫。',
+    traits:['间歇黏人','持续高冷','高偏爱需求','渴望被追']
+  }
+];
+
+/* ─────────────────────────────────────────
+   DIMENSION → QUESTION mapping
+───────────────────────────────────────── */
+const DIM_MAP = {
+  F1:[1,2], F2:[3],    F3:[4],
+  P1:[5],   P2:[6],    P3:[7,8],
+  C1:[9,10],C2:[11],   C3:[12],
+  D1:[13],  D2:[14,15],D3:[16]
+};
+const DIM_ORDER = ['F1','F2','F3','P1','P2','P3','C1','C2','C3','D1','D2','D3'];
+
+/* ─────────────────────────────────────────
+   SCORE CALCULATION
+───────────────────────────────────────── */
+function ans2val(a){ return {A:1,B:2,C:3}[a]; }
+function sum2val(s){ return s<=3?1:s===4?2:3; }
+
+function parseCode(code){
+  const m={L:1,M:2,H:3};
+  return code.replace(/-/g,'').split('').map(c=>m[c]);
+}
+
+function buildVector(answers){
+  return DIM_ORDER.map(dim=>{
+    const qs=DIM_MAP[dim];
+    if(qs.length===1) return ans2val(answers[qs[0]]);
+    const s=qs.reduce((acc,id)=>acc+ans2val(answers[id]),0);
+    return sum2val(s);
+  });
+}
+
+function matchAll(vec){
+  return TEMPLATES.map(t=>{
+    const tv=parseCode(t.code);
+    let diff=0,hits=0;
+    for(let i=0;i<12;i++){
+      const d=Math.abs(vec[i]-tv[i]);
+      diff+=d;
+      if(d===0) hits++;
+    }
+    const similarity=Math.round(100*(1-diff/24));
+    return {...t,diff,hits,similarity};
+  }).sort((a,b)=>a.diff!==b.diff?a.diff-b.diff:b.hits-a.hits);
+}
+
+/* ─────────────────────────────────────────
+   STATE
+───────────────────────────────────────── */
+let curQ=0, answers={}, chartInst=null;
+
+/* ─────────────────────────────────────────
+   SCREEN HELPERS
+───────────────────────────────────────── */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0,behavior:'instant'});
+}
+
+/* ─────────────────────────────────────────
+   QUIZ LOGIC
+───────────────────────────────────────── */
+function startQuiz(){
+  curQ=0; answers={};
+  show('s-quiz');
+  renderQ();
+}
+
+function renderQ(){
+  const q=QS[curQ];
+  document.getElementById('q-num').textContent=curQ+1;
+  document.getElementById('q-badge').textContent=q.badge;
+  document.getElementById('q-text').textContent=q.text;
+  document.getElementById('q-progress').style.width=(curQ/16*100)+'%';
+
+  const optsEl=document.getElementById('q-opts');
+  optsEl.innerHTML='';
+  ['A','B','C'].forEach(L=>{
+    const btn=document.createElement('button');
+    btn.className='opt'+(answers[q.id]===L?' selected':'');
+    btn.innerHTML=`<span class="opt-letter">${L}</span><span class="opt-text">${q.opts[L]}</span>`;
+    btn.addEventListener('click',()=>pick(L));
+    optsEl.appendChild(btn);
+  });
+
+  const isLast=curQ===QS.length-1;
+  const hasAns=!!answers[q.id];
+
+  document.getElementById('btn-prev').disabled=curQ===0;
+  const btnNext=document.getElementById('btn-next');
+  btnNext.textContent=isLast?'提交结果 ✨':'下一题 →';
+  btnNext.disabled=!hasAns;
+}
+
+function pick(letter){
+  const q=QS[curQ];
+  answers[q.id]=letter;
+  renderQ();
+  if(curQ<QS.length-1){
+    setTimeout(()=>nextQ(),340);
+  }
+}
+
+function nextQ(){
+  if(!answers[QS[curQ].id]) return;
+  if(curQ===QS.length-1){ submit(); return; }
+  curQ++;
+  renderQ();
+  window.scrollTo({top:0,behavior:'instant'});
+}
+
+function prevQ(){
+  if(curQ>0){ curQ--; renderQ(); window.scrollTo({top:0,behavior:'instant'}); }
+}
+
+function submit(){
+  show('s-load');
+  setTimeout(()=>{
+    const vec=buildVector(answers);
+    const ranked=matchAll(vec);
+    renderResult(vec,ranked);
+    show('s-result');
+  },1600);
+}
+
+/* ─────────────────────────────────────────
+   RESULT RENDER
+───────────────────────────────────────── */
+function renderResult(vec,ranked){
+  const best=ranked[0];
+
+  // Hero card
+  const hero=document.getElementById('r-hero');
+  hero.style.background=`linear-gradient(135deg, ${best.color}, ${best.colorDark})`;
+  document.getElementById('r-img').src=best.image;
+  document.getElementById('r-img').alt=best.name;
+  document.getElementById('r-emoji').textContent=best.emoji;
+  document.getElementById('r-name').textContent=best.name;
+  document.getElementById('r-tag').textContent=best.shortDesc;
+  document.getElementById('r-score').textContent=best.similarity;
+
+  // Full description
+  document.getElementById('r-full-desc').textContent=best.fullDesc;
+
+  // Traits
+  document.getElementById('r-traits').innerHTML=
+    best.traits.map(t=>`<span class="trait">${t}</span>`).join('');
+
+  // Radar chart
+  renderChart(vec,best.color);
+
+  // Runner-ups (rank 2 & 3)
+  document.getElementById('r-runners').innerHTML=ranked.slice(1,3).map((m,i)=>`
+    <div class="runner">
+      <div class="runner-rank rank-${i+2}">${i+2}</div>
+      <div class="runner-emoji">${m.emoji}</div>
+      <div class="runner-info">
+        <div class="runner-name">${m.name}</div>
+        <div class="runner-sub">${m.tag}</div>
+      </div>
+      <div class="runner-pct">${m.similarity}分</div>
+    </div>
+  `).join('');
+}
+
+function renderChart(vec,color){
+  if(chartInst){ chartInst.destroy(); chartInst=null; }
+  const ctx=document.getElementById('r-chart').getContext('2d');
+
+  // Group averages → normalize to 0–100
+  const groups={
+    '心动 F':[0,1,2],
+    '表达 P':[3,4,5],
+    '亲密 C':[6,7,8],
+    '不安感 D':[9,10,11]
+  };
+  const labels=Object.keys(groups);
+  const data=labels.map(g=>{
+    const idx=groups[g];
+    const avg=idx.reduce((s,i)=>s+vec[i],0)/idx.length;
+    return Math.round((avg-1)/2*100);
+  });
+
+  chartInst=new Chart(ctx,{
+    type:'radar',
+    data:{
+      labels,
+      datasets:[{
+        data,
+        backgroundColor:color+'28',
+        borderColor:color,
+        borderWidth:2.5,
+        pointBackgroundColor:color,
+        pointRadius:5,
+        pointHoverRadius:7,
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      scales:{
+        r:{
+          min:0, max:100,
+          ticks:{ display:false },
+          grid:{ color:'#EEE6F4' },
+          angleLines:{ color:'#EEE6F4' },
+          pointLabels:{
+            font:{ size:12, weight:'700', family:'system-ui' },
+            color:'#777'
+          }
+        }
+      },
+      plugins:{ legend:{ display:false } }
+    }
+  });
+}
+
+function resetQuiz(){ show('s-start'); }
+</script>
+</body>
+</html>
