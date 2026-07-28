@@ -50,8 +50,24 @@
   .row { display: flex; gap: 10px; }
   .row > .field { flex: 1; }
 
-  .check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--sub); margin-top: 8px; cursor: pointer; }
-  .check input { width: auto; }
+  .notime-btn {
+    display: block; width: 100%; margin-top: 10px; padding: 11px 14px;
+    font-size: 13.5px; font-weight: 700; color: var(--sub); text-align: center;
+    background: #fff; border: 1.5px dashed #d8c9ef; border-radius: 14px; cursor: pointer;
+    transition: all .15s ease;
+  }
+  .notime-btn::before { content: '○ '; }
+  .notime-btn.on {
+    color: #fff; border: 1.5px solid transparent;
+    background: linear-gradient(90deg, var(--brand), var(--brand2));
+    box-shadow: 0 4px 14px rgba(200,100,200,.3);
+  }
+  .notime-btn.on::before { content: '✓ '; }
+  .notime-hint {
+    display: none; margin-top: 8px; padding: 9px 12px; font-size: 12.5px; line-height: 1.6;
+    color: #8a63b8; background: #f7f2ff; border-radius: 12px;
+  }
+  .notime-hint.show { display: block; }
 
   .adv-toggle { font-size: 12.5px; color: var(--brand); cursor: pointer; user-select: none; margin: -6px 0 12px; display: inline-block; }
   #advBox { display: none; padding: 12px; background: #f7f2ff; border-radius: 14px; margin-bottom: 14px; }
@@ -122,12 +138,13 @@
       </div>
     </div>
     <div class="field">
-      <label>出生时间 <span class="opt">（不知道可勾选下方，会影响月亮和上升）</span></label>
-      <div class="row">
+      <label>出生时间 <span class="opt">（不知道可点下方按钮）</span></label>
+      <div class="row" id="timeRow">
         <select id="selHour"><option value="">时</option></select>
         <select id="selMinute"><option value="">分</option></select>
       </div>
-      <label class="check"><input type="checkbox" id="noTime"> 我不知道出生时间</label>
+      <button type="button" class="notime-btn" id="noTimeBtn" aria-pressed="false">我不知道出生时间</button>
+      <div class="notime-hint" id="noTimeHint">不知道出生时间：上升不参与计算，结果置信度会降低。再点一次可取消。</div>
     </div>
     <div class="field">
       <label>出生地点</label>

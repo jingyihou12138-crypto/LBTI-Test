@@ -51,10 +51,14 @@
   for (var mi = 0; mi < 60; mi++) minItems.push({ value: mi, text: (mi < 10 ? '0' + mi : mi) + ' 分' });
   fillSelect($('selMinute'), minItems, true);
 
-  $('noTime').addEventListener('change', function () {
-    $('selHour').disabled = this.checked;
-    $('selMinute').disabled = this.checked;
-    if (this.checked) { $('selHour').value = ''; $('selMinute').value = ''; }
+  // 「我不知道出生时间」切换按钮：选中态一眼可见，可再次点击取消
+  function noTimeOn() { return $('noTimeBtn').classList.contains('on'); }
+  $('noTimeBtn').addEventListener('click', function () {
+    var on = this.classList.toggle('on');
+    this.setAttribute('aria-pressed', on ? 'true' : 'false');
+    $('timeRow').style.display = on ? 'none' : '';
+    $('noTimeHint').classList.toggle('show', on);
+    if (on) { $('selHour').value = ''; $('selMinute').value = ''; }
   });
 
   /* ---- 省市二级联动 ---- */
@@ -93,10 +97,10 @@
       var yy = +$('selYear').value, mo = +$('selMonth').value, dd = +$('selDay').value;
       if (!yy || !mo || !dd) throw new Error('请选择完整的出生日期');
 
-      var noTime = $('noTime').checked;
+      var noTime = noTimeOn();
       var hv = $('selHour').value, mv = $('selMinute').value;
       var hasTime = !noTime && hv !== '' && mv !== '';
-      if (!noTime && (hv === '' || mv === '')) throw new Error('请选择出生时间，或勾选「我不知道出生时间」');
+      if (!noTime && (hv === '' || mv === '')) throw new Error('请选择出生时间，或点击「我不知道出生时间」');
 
       var lat, lng, tz;
       var mLat = $('lat').value, mLng = $('lng').value;

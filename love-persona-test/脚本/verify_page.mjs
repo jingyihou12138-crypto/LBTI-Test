@@ -77,12 +77,23 @@ if (L && CD) {
     if (!ok) fail++;
     console.log(`回归 ${t.label} → ${res.winner.code}（期望 ${t.expect}）${ok ? 'OK' : '!!MISMATCH'} 置信度=${res.confidence}`);
   }
-  // 无出生时间路径
-  const chart2 = L.computeChart({ year: 2002, month: 12, day: 5, hasTime: false, lat: 39.63, lng: 118.18, tz: 'Asia/Shanghai' });
-  const res2 = L.computeResult('ENFP', chart2, false);
-  console.log('无出生时间路径: →', res2.winner.code, res2.confidence, '(月亮' + (chart2.moonDropped ? '已弃用' : '保留') + ', 上升=' + chart2.placements.asc + ')',
-    res2.confidence === '可能有趣' ? 'OK' : '!!置信度应为可能有趣');
-  if (res2.confidence !== '可能有趣') fail++;
+  // 无出生时间路径①：同一人「填时间 vs 不知道时间」双路径，均出结果且置信度不同
+  const locTS = pick('河北省', '唐山市');
+  const withTime = L.computeResult('ENFP', L.computeChart({ year: 2002, month: 12, day: 5, hour: 7, minute: 5, hasTime: true, lat: locTS.lat, lng: locTS.lng, tz: locTS.tz }), true);
+  const chartNT = L.computeChart({ year: 2002, month: 12, day: 5, hasTime: false, lat: locTS.lat, lng: locTS.lng, tz: locTS.tz });
+  const noTimeRes = L.computeResult('ENFP', chartNT, false);
+  const dualOk = withTime.confidence !== noTimeRes.confidence && noTimeRes.confidence === '可能有趣'
+    && chartNT.moonDropped === true && chartNT.placements.moon === null && chartNT.placements.asc === null;
+  if (!dualOk) fail++;
+  console.log(`双路径(2002-12-05 月亮换座日): 有时间→${withTime.winner.code}/${withTime.confidence}, 无时间→${noTimeRes.winner.code}/${noTimeRes.confidence} (月亮已弃用, 上升不参与) ${dualOk ? 'OK' : '!!FAIL'}`);
+  // 无出生时间路径②：当天月亮不换座 → 月亮保留、上升不参与、置信度仍降档
+  const locSeoul = pick('海外/其他', '首尔');
+  const chartNT2 = L.computeChart({ year: 2001, month: 4, day: 17, hasTime: false, lat: locSeoul.lat, lng: locSeoul.lng, tz: locSeoul.tz });
+  const noTimeRes2 = L.computeResult('INTJ', chartNT2, false);
+  const keepOk = chartNT2.moonDropped === false && chartNT2.placements.moon !== null
+    && chartNT2.placements.asc === null && noTimeRes2.confidence === '可能有趣';
+  if (!keepOk) fail++;
+  console.log(`无时间·月亮不换座(2001-04-17): →${noTimeRes2.winner.code}/${noTimeRes2.confidence} (月亮保留=${L.SIGNS[chartNT2.placements.moon]}, 上升不参与) ${keepOk ? 'OK' : '!!FAIL'}`);
   // 人设文案与《恋爱人设图鉴.md》逐字对齐（介绍段第一行=first，其余=detail）
   const atlas = fs.readFileSync(path.join(path.dirname(ROOT), '恋爱人设图鉴.md'), 'utf8');
   const sections = atlas.split(/^### /m).slice(1);
