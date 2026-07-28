@@ -1,0 +1,347 @@
+/*
+ * 恋爱人设测试 —— 核心逻辑（天文计算 + 映射打分）
+ * 规则来源：../恋爱人设映射规则（定稿）.md
+ * UMD：浏览器挂 window.PersonaLogic；node 可 require 用于对拍测试。
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory(require('./astronomy.browser.min.js'));
+  } else {
+    root.PersonaLogic = factory(root.Astronomy);
+  }
+})(typeof self !== 'undefined' ? self : this, function (Astronomy) {
+  'use strict';
+
+  /* ============ 星座 / 元素 ============ */
+
+  var SIGNS = ['白羊', '金牛', '双子', '巨蟹', '狮子', '处女', '天秤', '天蝎', '射手', '摩羯', '水瓶', '双鱼'];
+  var SIGN_EN = ['Ari', 'Tau', 'Gem', 'Can', 'Leo', 'Vir', 'Lib', 'Sco', 'Sag', 'Cap', 'Aqu', 'Pis'];
+  var SIGN_ELEMENT = ['fire', 'earth', 'air', 'water', 'fire', 'earth', 'air', 'water', 'fire', 'earth', 'air', 'water'];
+
+  function signIndex(lon) {
+    var x = lon % 360;
+    if (x < 0) x += 360;
+    return Math.floor(x / 30);
+  }
+
+  /* ============ 时区换算 ============ */
+
+  // 某 IANA 时区在指定时刻的 UTC 偏移（分钟，东为正）
+  function tzOffsetMinutes(epochMs, tz) {
+    var dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+    var parts = {};
+    dtf.formatToParts(new Date(epochMs)).forEach(function (p) { parts[p.type] = p.value; });
+    var asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day,
+      parts.hour === '24' ? 0 : +parts.hour, +parts.minute, +parts.second);
+    return (asUTC - epochMs) / 60000;
+  }
+
+  // 当地墙上时间 → UTC Date。tz 可为 IANA 名称或固定偏移分钟数
+  function localToUTC(y, mo, d, h, mi, tz) {
+    if (typeof tz === 'number') return new Date(Date.UTC(y, mo - 1, d, h, mi) - tz * 60000);
+    var t = Date.UTC(y, mo - 1, d, h, mi);
+    for (var i = 0; i < 3; i++) {
+      var off = tzOffsetMinutes(t, tz);
+      var t2 = Date.UTC(y, mo - 1, d, h, mi) - off * 60000;
+      if (t2 === t) break;
+      t = t2;
+    }
+    return new Date(t);
+  }
+
+  /* ============ 天文计算（回归黄道，黄经每 30° 一座，白羊起） ============ */
+
+  function eclipticLongitude(bodyName, date) {
+    var time = Astronomy.MakeTime(date);
+    if (bodyName === 'Moon') return Astronomy.EclipticGeoMoon(time).lon;
+    var vec = Astronomy.GeoVector(Astronomy.Body[bodyName], time, true);
+    return Astronomy.Ecliptic(vec).elon;
+  }
+
+  // 平黄赤交角（度）；忽略章动对交角的 ~0.003° 影响，不影响落座判断
+  function meanObliquity(date) {
+    var time = Astronomy.MakeTime(date);
+    var T = time.tt / 36525.0;
+    return 23.43929111 - (46.8150 * T + 0.00059 * T * T - 0.001813 * T * T * T) / 3600.0;
+  }
+
+  // 上升点黄经：当地恒星时 + 纬度公式
+  function ascendantLongitude(date, latDeg, lngDeg) {
+    var time = Astronomy.MakeTime(date);
+    var gast = Astronomy.SiderealTime(time);          // 格林尼治视恒星时（小时）
+    var ramc = ((gast + lngDeg / 15) * 15) % 360;      // 当地恒星时 → 中天赤经（度）
+    if (ramc < 0) ramc += 360;
+    var rad = Math.PI / 180;
+    var eps = meanObliquity(date) * rad;
+    var phi = latDeg * rad;
+    var asc = Math.atan2(
+      Math.cos(ramc * rad),
+      -(Math.sin(ramc * rad) * Math.cos(eps) + Math.tan(phi) * Math.sin(eps))
+    ) / rad;
+    if (asc < 0) asc += 360;
+    return asc;
+  }
+
+  /**
+   * 排盘。input: { year, month, day, hour, minute, hasTime, lat, lng, tz }
+   * 返回 { placements: {sun,moon,venus,mars,asc}(星座序号或null), longitudes, moonDropped }
+   */
+  function computeChart(input) {
+    var placements = {}, longitudes = {};
+    var moonDropped = false;
+
+    if (input.hasTime) {
+      var utc = localToUTC(input.year, input.month, input.day, input.hour, input.minute, input.tz);
+      ['Sun', 'Moon', 'Venus', 'Mars'].forEach(function (b) {
+        var lon = eclipticLongitude(b, utc);
+        longitudes[b.toLowerCase()] = lon;
+        placements[b.toLowerCase()] = signIndex(lon);
+      });
+      var ascLon = ascendantLongitude(utc, input.lat, input.lng);
+      longitudes.asc = ascLon;
+      placements.asc = signIndex(ascLon);
+    } else {
+      // 无出生时间：按当地正午算日/金/火；月亮当天换座则弃用；不算上升
+      var noon = localToUTC(input.year, input.month, input.day, 12, 0, input.tz);
+      ['Sun', 'Venus', 'Mars'].forEach(function (b) {
+        var lon = eclipticLongitude(b, noon);
+        longitudes[b.toLowerCase()] = lon;
+        placements[b.toLowerCase()] = signIndex(lon);
+      });
+      var m0 = signIndex(eclipticLongitude('Moon', localToUTC(input.year, input.month, input.day, 0, 0, input.tz)));
+      var m1 = signIndex(eclipticLongitude('Moon', localToUTC(input.year, input.month, input.day, 23, 59, input.tz)));
+      if (m0 === m1) {
+        var mlon = eclipticLongitude('Moon', noon);
+        longitudes.moon = mlon;
+        placements.moon = m0;
+      } else {
+        placements.moon = null;
+        moonDropped = true;
+      }
+      placements.asc = null;
+    }
+    return { placements: placements, longitudes: longitudes, moonDropped: moonDropped };
+  }
+
+  /* ============ 人设数据（20 个，源自图鉴） ============ */
+
+  // fpcd = 12 维码按组平均（H=2/M=1/L=0），与定稿规则表一致
+  // first/detail 文案逐字取自《恋爱人设图鉴.md》各人设「介绍」段（第一行=第一句，其余=详细介绍）
+  var PERSONAS = [
+    { code: 'DOGG', name: '狗勾', emoji: '🐶', type: '年下狗 / 热情外放', fpcd: [1.7, 1.7, 1.7, 0.7], line: '真诚是必杀技，把爱翻肚皮亮给你',
+      first: '你主打一个真诚是必杀技，像小狗狗一样把所有的爱都翻肚皮亮给ta。',
+      detail: 'ta出门你摇尾巴，ta回家你转圈圈，ta多看别人一眼你的耳朵当场耷拉下来。认定一个人就掏心掏肺，把全世界最直白热烈的爱意都给ta，内心疯狂os："宝宝，今天也超级喜欢你！"' },
+    { code: 'TEAR', name: '林黛玉', emoji: '🥀', type: '高敏感 / 易 emo', fpcd: [1.7, 1, 1.7, 1], line: '自带显微镜的人形雷达',
+      first: '大家都在逢场作戏，只有你拿着显微镜，在 ta 的每一个标点符号里找爱你的证据。',
+      detail: '作为恋爱界“自带显微镜的人形雷达”，对方消息晚回一分钟，你已经脑补了十集甄嬛传。对方发来一个“哦”，你的大脑瞬间会拉响一级警报，在对话框里反复打出八百字小作文又怂得全选删除，最后只敢发个搞笑表情包小心翼翼地试探。别人看你像是在无风起浪、疯狂内耗，但剥开这层草木皆兵的外壳，实际上你只是太在意你们的关系。' },
+    { code: 'DRUM', name: '退堂鼓', emoji: '🥁', type: '高回避', fpcd: [0.3, 0, 1.3, 0.7], line: '敌进你退，敌退你打车跑',
+      first: '敌进你退，敌退你打车跑。',
+      detail: '退堂鼓十级表演艺术家。表面说着“算了算了，别麻烦”，却又在心里偷偷期待有人能一眼看穿自己的胆小和小心翼翼。一感受到不确定就先把退场路线规划好，实际上在等待属于自己的引导型恋人出现。喜欢的话，要说话呀。' },
+    { code: 'CUPP', name: '保温杯', emoji: '🍵', type: '平淡安稳型', fpcd: [0.3, 0.7, 0.3, 0.3], line: '平平淡淡才是真，保温杯里泡枸杞',
+      first: '平平淡淡才是真，保温杯里泡枸杞。',
+      detail: '别人的恋爱像过山车，你的恋爱像保温杯里的热水，24 小时恒温。你给不了惊天动地的浪漫，却也从不让人猜来猜去、患得患失。无论发生什么，你都会在那里，不逃、不躲、稳稳地接住ta的情绪。' },
+    { code: 'PULL', name: '推拉大师', emoji: '☯️', type: '高推拉', fpcd: [1.3, 1.7, 1.3, 1], line: '极致的推拉，致命的诱惑',
+      first: '太极宗师转世，极致推拉王者。',
+      detail: '极致的推拉，致命的诱惑。你享受的从来不是在一起那个结果，而是那根若即若离、扯不断又系不紧的线。你最怕听到的话是：“所以我们现在到底算什么关系？”嘘，别问，一问就淡了。' },
+    { code: 'RUSH', name: '恋爱悍匪', emoji: '⚡', type: '直球型 / 来去快', fpcd: [1.3, 1.3, 0.7, 0.3], line: '随时准备开启一场入室抢劫般的爱情',
+      first: '随时准备开启一场入室抢劫般的爱情。',
+      detail: '你的字典里根本没有“暧昧期”这三个字，喜欢就是喜欢，上头就是上头，从不缓冲、绝不转圈加载。遇到 crush，你会用最直白、最不绕弯子、最容易理解的方式告诉ta：“我喜欢你，要和我在一起吗？”' },
+    { code: 'GUID', name: '引导型', emoji: '🌟', type: '成熟年上 / 引导型', fpcd: [0.7, 1, 0.7, 0.7], line: '无须多言，伟大的引导型恋人',
+      first: '无须多言，伟大的引导型恋人。',
+      detail: '你是关系里的定海神针——对方的慌张、不安、兵荒马乱，都会被你一一接住。你从不居高临下地纠正谁，只是稳稳托着，让对方可以在你面前卸下所有防备和伪装。在你这里，依赖从来不是长不大，而是被允许的特权——“不再依赖你算长大吗”？不存在的，可以一辈子依赖你。所以啊，爱上你当然是你的错。' },
+    { code: 'SOLO', name: '寡王', emoji: '🪷', type: '无欲无求型', fpcd: [0.3, 0, 0.3, 0.7], line: '封心锁爱，电子木鱼敲到冒烟',
+      first: '爱你老己，只有你是真的听进去了。',
+      detail: '封心锁爱，电子木鱼敲到冒烟。你不是恋爱绝缘体，只是把谈恋爱从人生待办里划掉了。对于恋爱，你的态度是：慢慢急，不要来。' },
+    { code: 'ALIEN', name: '外星人', emoji: '👽', type: '无厘头 / 跳跃', fpcd: [1, 0.7, 1.3, 0.3], line: '精神状态领先人类十年',
+      first: '不知道，你的脑回路很曼妙。',
+      detail: '恋爱界的 5G 信号塔，但信号源来自外太空。上一秒在和别人聊今晚吃什么，下一秒突然蹦出一句“你觉得外星人便秘吗？” 精神状态领先人类十年，别人永远跟不上你的节奏。' },
+    { code: 'BOSS', name: '王者', emoji: '👑', type: '慕强 / 双强', fpcd: [1, 1.3, 1, 0.7], line: '极致慕强，慕强批天花板',
+      first: '天才在左，疯子在右，朕在中间，朕是天子。',
+      detail: '你是恋爱界的慕强批天花板，择偶标准就一条：比你强。你不想搀着谁歪歪扭扭地走路，只向往势均力敌的爱情。所以就算没有对方，你也是闪闪发光的个体。只有遇到那个能跟你并肩的人，你才甘愿在爱里投降一次。' },
+    { code: 'FISH', name: '鱼', emoji: '🐟', type: '恋爱脑 / 单向奔赴', fpcd: [1.3, 0.7, 1.3, 0.3], line: '王宝钏挖野菜找你借铲子',
+      first: '王宝钏挖野菜要找你借铲子，姜太公拍大腿问你为什么没早来。',
+      detail: '被海王海，被钓神钓。善于配合，积极咬钩。单向奔赴,越挫越勇。自我感动,天天报到。\n“你这个症状持续多久了？”\n“医生，其他ta不打我的时候对我挺好的。”' },
+    { code: 'MAMA', name: '妈妈', emoji: '🧸', type: '照顾型', fpcd: [1, 0.7, 1.7, 0.7], line: '女则妈妈，男则男妈妈',
+      first: '早安问对方吃了没，晚安催 ta 早点睡，就连吵完架也不是真生气，满脑子还是 ta 冷不冷、穿得够不够暖。',
+      detail: '女则妈妈，男则男妈妈～你不讲甜言蜜语，却把对方的喜好和小毛病记得一清二楚：走路自动站到车流那侧，熬夜到一半直接去关灯。你的爱全藏在这些没被开口要求的细节里，被你稳稳操心着，对方才敢在外面横冲直撞。' },
+    { code: 'PLAY', name: '养鱼者', emoji: '🎣', type: '中央空调', fpcd: [1.3, 1.7, 0, 1], line: '人间端水大师，雨露均沾',
+      first: '心碎成了很多片，每一片都爱上了不同的人。',
+      detail: '人间端水大师，主打一个“雨露均沾”，口头禅是：“都是我的好朋友呀！”你没有故意骗谁，只是你的温柔太公平了。你记得住每个人说过的小事，也总能在恰好的时候递上一句关心，让人误以为自己真的很特别。可喜欢你的人，总会忍不住想要那一点不公平——想在你对所有人的好里，偷偷多占一点。' },
+    { code: 'ROBOT', name: '小机器人', emoji: '🤖', type: '木讷反差萌', fpcd: [0.3, 0.7, 0.3, 0.3], line: '机器人的程序设定是爱你',
+      first: 'Loading... 恋爱程序加载中...',
+      detail: '你不太擅长接住那些弯弯绕绕的情话，被逗了半天才慢慢反应过来，然后一本正经地回一句“哦”，实际上系统悄悄宕机，耳朵也偷偷红了。可你会把对方随口提过的小事悄悄存进记忆库，在需要的时候笨拙又认真地拿出来。机器人的程序设定...是喜欢ta...' },
+    { code: 'DRAMA', name: '抓马', emoji: '🎭', type: '虐恋情深型', fpcd: [2, 1.3, 1.7, 1.7], line: '没有困难创造困难也要谈',
+      first: '没有困难创造困难也要谈。',
+      detail: '你谈恋爱，主打一个因爱生恨、相爱相杀。爱得浓烈，也吵得轰轰烈烈。对方晚回一句，你已经脑补完八十集be连续剧。总在深夜问自己，恨海情天究竟是爱更多还是恨更多？其实哪有什么答案，你只是怕爱太轻，才非要把每件小事都闹得惊天动地。' },
+    { code: 'CAT', name: '猫', emoji: '🐱', type: '间歇黏人 / 高冷', fpcd: [1.3, 0.7, 1, 0.3], line: '间歇性黏人，持续性高冷',
+      first: '不要试图掌控一只猫，你只能等 ta 来宠幸你。',
+      detail: '间歇性黏人，持续性高冷。你想贴贴的时候，会悄悄蹭过去，让人以为自己被选中了；等对方刚想多黏一会儿，你又若无其事地走开。不过，猫猫有什么错呢？猫猫的存本身就值得被爱。' },
+    { code: 'CHOCO', name: '酒心巧克力', emoji: '🍫', type: '外冷内热 / 嘴硬', fpcd: [0.3, 0, 1.7, 0.3], line: '生人勿近，熟人限定',
+      first: '生人勿近，熟人限定。',
+      detail: '嘴比命硬，你能看透我的心吗。\n你把关心藏得很深：明明担心对方，却只会装作随口问一句；明明想靠近，偏要先说“随便吧”。像一颗酒心巧克力，外壳有点苦，也有点硬，只有相处久了，才会发现里面藏着一点不轻易示人的温柔。只是要有点耐心，才能等到你亲手把那层硬壳掰开。' },
+    { code: 'CPBR', name: '卡皮巴拉', emoji: '🦫', type: '正常恋爱 / 佛系松弛', fpcd: [1, 1, 1, 1], line: '世界纷纷扰扰，与我无瓜',
+      first: '世界纷纷扰扰，与你无瓜。',
+      detail: '正常人是全世界最稀缺的物种，而你正是那只行走的珍稀保护动物。你不发疯、不冷战、不玩消失，有话直说、有事直接沟通。松弛感MAX，拒绝内耗，不争不抢。和你谈恋爱不用做阅读理解，也不用熟读《对方到底什么意思》全解。“你说什么？”“行”“都可以”“没关系”' },
+    { code: 'MIND', name: '分析者', emoji: '🔍', type: '恋爱侦探 / 阅读理解', fpcd: [1, 1, 1.3, 1], line: '别人谈恋爱两人聊天，你谈恋爱好多人开会',
+      first: '爱情不是两个人的事。',
+      detail: '别人谈恋爱，两个人聊天。你谈恋爱，好多人开会。“你们说，ta到底是什么意思？”' },
+    { code: '2G', name: '2G 失联者', emoji: '📶', type: '忽冷忽热 / 间歇失联', fpcd: [0.7, 0.3, 0.7, 0.3], line: '信号时有时无，连接全靠缘分',
+      first: '我在草原上，信号不太好。',
+      detail: '信号时有时无，连接全靠缘分。 你的回复从来不看时间，而是看心情和宇宙磁场。想回时秒回，不想回时人间蒸发。你不是故意失联，只是早就在脑子里回完了——至于消息框里为什么没有，大概是意念发送失败。有事漂流瓶联系～' }
+  ];
+
+  var PERSONA_MAP = {};
+  PERSONAS.forEach(function (p) { PERSONA_MAP[p.code] = p; });
+
+  /* ============ MBTI → 候选批（首选+4 / 次选+2） ============ */
+
+  var MBTI_TABLE = {
+    ENFP: { first: ['DOGG', 'FISH'], second: ['ALIEN', 'DRAMA'] },
+    ESFP: { first: ['DOGG', 'DRAMA'], second: ['RUSH', 'PLAY'] },
+    ENFJ: { first: ['GUID', 'MAMA'], second: ['DOGG', 'FISH'] },
+    ESFJ: { first: ['MAMA'], second: ['CUPP', 'DOGG'] },
+    ENTP: { first: ['PULL', 'ALIEN'], second: ['PLAY', '2G'] },
+    ESTP: { first: ['RUSH', 'PLAY'], second: ['PULL', 'BOSS'] },
+    ENTJ: { first: ['BOSS'], second: ['GUID', 'RUSH'] },
+    ESTJ: { first: ['BOSS', 'CUPP'], second: ['GUID', 'ROBOT', 'MAMA'] },
+    INFP: { first: ['TEAR', 'FISH'], second: ['2G', 'CHOCO', 'ALIEN'] },
+    ISFP: { first: ['FISH', 'CPBR'], second: ['CHOCO', 'CAT'] },
+    INFJ: { first: ['TEAR', 'GUID'], second: ['MIND', 'CHOCO'] },
+    ISFJ: { first: ['MAMA', 'CUPP'], second: ['CPBR', 'TEAR'] },
+    INTP: { first: ['MIND', 'ALIEN'], second: ['SOLO', 'ROBOT', '2G', 'DRUM'] },
+    ISTP: { first: ['DRUM', 'CAT'], second: ['ROBOT', 'SOLO'] },
+    INTJ: { first: ['BOSS', 'CHOCO'], second: ['SOLO', 'MIND', 'CAT'] },
+    ISTJ: { first: ['CUPP', 'ROBOT'], second: ['CHOCO', 'SOLO'] }
+  };
+
+  /* ============ CP 配对（双视角精简版，源自 CP 配对文件） ============ */
+
+  var CP = {
+    DOGG: { partner: 'GUID', mine: '你把整颗心吵吵闹闹地递过去，ta 从不嫌你闹，只是摸摸你的头，把你连人带尾巴一起揉进怀里。', theirs: 'ta 习惯当托底的人，你这颗直球小狗一头撞进来，ta 才发现被人热烈地需要，其实也很不错。' },
+    DRUM: { partner: 'GUID', mine: '你一感受到不确定就偷偷打退堂鼓，可 ta 不追不逼，只把门轻轻留一半——ta 就在那里，但你随时可以后退。', theirs: 'ta 看得出你嘴上说“算了别麻烦”，其实在等人识破你的胆小；ta 不戳穿，只稳稳站在原地。' },
+    TEAR: { partner: 'MAMA', mine: '有人愿意逐字逐句读懂你，发现你悄悄咽下的委屈。被这样温柔地等着，绕来绕去的心事也没那么难开口了。', theirs: 'ta 总能第一个发现你藏起来的小情绪，把你照顾得妥妥帖帖，也在照顾里被你轻轻接住。' },
+    MAMA: { partner: 'TEAR', mine: '你总能第一个发现别人藏起来的委屈；照顾着 ta，一转身才发现自己也一直被轻轻接住。', theirs: 'ta 心思细也敏感，而你愿意逐字逐句读懂 ta——被温柔等着的 ta，心事没那么难开口了。' },
+    CUPP: { partner: 'CPBR', mine: '你给不了惊天动地的浪漫，只有始终如一的温度；ta 却觉得，感情淡淡的，日子才会顺顺的。', theirs: '在 ta 的世界里时间很慢，幸福也很简单。你像一杯始终温热的水，不声不响落进 ta 的生活。' },
+    CPBR: { partner: 'CUPP', mine: '恋爱不用太复杂，两个人舒服地待在一起就够了。ta 像洒在身上暖洋洋的太阳，让简单的日子也幸福起来。', theirs: 'ta 给不了惊天动地的浪漫，只有始终如一的温度——你们不赶时间，就这样慢慢走，也很好。' },
+    RUSH: { partner: 'DRAMA', mine: '你的喜欢从不绕路，心动了就坦坦荡荡奔向对方；偏偏 ta 也爱得声势浩大，接得住你所有突如其来的热烈。', theirs: 'ta 要的爱从来不能悄无声息，你的每一次心动都给得明目张胆——一个敢爱，一个敢应。' },
+    DRAMA: { partner: 'RUSH', mine: '你要的爱不能悄无声息，偏偏 ta 的每一次心动都明目张胆。你把故事推向高潮，ta 毫不犹豫入戏。', theirs: 'ta 的喜欢从不绕路，心动就直奔向你；没人劝谁冷静，你们只管把这场爱谈得尽兴。' },
+    BOSS: { partner: 'PULL', mine: 'ta 不需要仰望你，也不回避你的锋芒，只是站在与你相同的高度——让你第一次相信宿命感。', theirs: 'ta 习惯用若即若离掌握节奏，却在你这里不玩了：不是为了赢你，而是想和你并肩。' },
+    PULL: { partner: 'BOSS', mine: '你习惯用若即若离掌握关系节奏，ta 却从不被你牵着走。ta 知道你有多危险，仍然选择靠近。', theirs: '对 ta 来说爱是势均力敌的博弈，而你不仰望也不回避，正好站在与 ta 相同的高度。' },
+    CAT: { partner: '2G', mine: '你按自己的心情靠近或走开，ta 从不追着确认；正因为这份不打扰，你反而总想回到 ta 身边。', theirs: 'ta 总在热烈和失联之间来回，而你有自己的节奏，不追问也不催促，想念时总能重新连上。' },
+    '2G': { partner: 'CAT', mine: '你在热烈和失联之间来回，连自己也说不准下次何时上线；偏偏 ta 不追问、不催促。', theirs: 'ta 想黏时就蹭过去，想独处便走开；你们不靠时时在线证明喜欢，却总能在想念时连上。' },
+    ALIEN: { partner: 'MIND', mine: '你的思绪总比人群快半拍，别人只当你胡思乱想，ta 却认真沿着你的轨道追问下去。', theirs: 'ta 习惯为每件事找逻辑，而你是道永远没有标准答案的题——猜不透不是困扰，是乐趣。' },
+    MIND: { partner: 'ALIEN', mine: '你习惯为每件事寻找逻辑和答案，偏偏 ta 每一个突如其来的念头都打开新的入口。', theirs: 'ta 的奇思妙想终于有了共鸣——你会认真沿着 ta 的轨道追问下去，而不是当 ta 胡思乱想。' },
+    FISH: { partner: 'PLAY', mine: '明知 ta 的好不只给你，还是忍不住游过去。可这一次，ta 真的为你留出了一片只属于你的水域。', theirs: 'ta 习惯把温柔分给很多人，而你捧着整颗真心游来，让 ta 第一次想收起撒向四处的网。' },
+    PLAY: { partner: 'FISH', mine: '你习惯把温柔分给很多人，从没想过为谁停下来；偏偏 ta 不试探也不保留，让你第一次只想接住 ta。', theirs: 'ta 总被一点温柔打动，这一次 ta 的认真终于有了回音——你为 ta 留出了专属水域。' },
+    CHOCO: { partner: 'ROBOT', mine: 'ta 不擅长猜心，却会记住你随口说过的每件小事，用一次次笨拙而确定的行动，等你把甜交出来。', theirs: 'ta 嘴上嫌你迟钝，却把你每一次不动声色的在意都收好，愿意等你缓慢加载完爱意。' },
+    ROBOT: { partner: 'CHOCO', mine: '你不会说漂亮话，连喜欢都要反应很久；ta 嘴上嫌你迟钝，却把你每次的在意都收好。', theirs: 'ta 把柔软藏在微苦的外壳里，而你的笨拙和确定，让 ta 慢慢愿意把甜交出来。' },
+    GUID: { partner: 'DOGG', mine: '你习惯当托底的人，很少被谁这么直白地爱着；直球小狗一头撞进来，你才发现被热烈需要也很不错。', theirs: 'ta 一旦认定你，就想把整颗心吵吵闹闹地递过来；你从不嫌 ta 闹，把 ta 连人带尾巴揉进怀里。' },
+    SOLO: { partner: null, mine: '智者不入爱河，寡王一路硕博。恋爱这项长期缺货且不补，木鱼一敲，天下无敌。', theirs: '别人忙着配对，你忙着接满这杯水——心动偶尔有，但撑不过一顿好饭。' }
+  };
+
+  /* ============ 星盘 → 四维画像 ============ */
+
+  var PLANET_WEIGHTS = { moon: 2.5, venus: 2.5, sun: 1.5, mars: 1.5, asc: 1 };
+  // 元素投票 [F, P, C, D]，H=2 / M=1 / L=0
+  var ELEMENT_VOTES = {
+    fire:  [2, 2, 1, 1],
+    earth: [0, 1, 1, 0],
+    air:   [1, 1, 0, 0],
+    water: [2, 0, 2, 2]
+  };
+
+  function computeProfile(placements) {
+    var sum = [0, 0, 0, 0], wsum = 0;
+    Object.keys(PLANET_WEIGHTS).forEach(function (k) {
+      var si = placements[k];
+      if (si === null || si === undefined) return;
+      var votes = ELEMENT_VOTES[SIGN_ELEMENT[si]];
+      var w = PLANET_WEIGHTS[k];
+      wsum += w;
+      for (var i = 0; i < 4; i++) sum[i] += w * votes[i];
+    });
+    if (wsum === 0) return null;
+    return sum.map(function (v) { return v / wsum; });
+  }
+
+  /* ============ 贴合打分 + 总分判定 ============ */
+
+  var FIT_WEIGHTS = [1.5, 1, 1.5, 1]; // F P C D
+
+  function fitScore(profile, fpcd) {
+    var s = 0;
+    for (var i = 0; i < 4; i++) s += FIT_WEIGHTS[i] * (1 - Math.abs(profile[i] - fpcd[i]) / 2);
+    return s;
+  }
+
+  var TIE_SETS = {
+    T: ['MIND', 'BOSS', 'CAT'], F: ['TEAR', 'FISH', 'MAMA'],
+    J: ['GUID', 'CUPP', 'ROBOT'], P: ['PULL', 'ALIEN', 'PLAY', '2G']
+  };
+
+  /**
+   * 主入口。mbti: 'ENFP' 等；chart: computeChart 的返回值；hasTime: 是否有出生时间
+   * 返回 { winner, confidence, hidden, board, profile }
+   */
+  function computeResult(mbti, chart, hasTime) {
+    var profile = computeProfile(chart.placements);
+    var batch = MBTI_TABLE[mbti];
+    var board = PERSONAS.map(function (p) {
+      var mbtiScore = 0;
+      if (batch) {
+        if (batch.first.indexOf(p.code) >= 0) mbtiScore = 4;
+        else if (batch.second.indexOf(p.code) >= 0) mbtiScore = 2;
+      }
+      var fit = profile ? fitScore(profile, p.fpcd) : 0;
+      return { code: p.code, mbtiScore: mbtiScore, fit: fit, total: mbtiScore + fit };
+    });
+    board.sort(function (a, b) { return b.total - a.total; });
+
+    // 并列裁决
+    var EPS = 1e-9;
+    var top = board.filter(function (r) { return Math.abs(r.total - board[0].total) < EPS; });
+    var winner = top[0];
+    if (top.length > 1 && batch) {
+      var prefer = [].concat(TIE_SETS[mbti[2]] || [], TIE_SETS[mbti[3]] || []);
+      var byLetter = top.filter(function (r) { return prefer.indexOf(r.code) >= 0; });
+      var pool = byLetter.length ? byLetter : top;
+      var byFirst = pool.filter(function (r) { return batch.first.indexOf(r.code) >= 0; });
+      winner = (byFirst.length ? byFirst : pool)[0];
+    }
+
+    // 隐藏人设：贴合分全场第一但没当选
+    var hidden = null;
+    var maxFit = Math.max.apply(null, board.map(function (r) { return r.fit; }));
+    if (winner.fit < maxFit - EPS) {
+      hidden = board.slice().sort(function (a, b) { return b.fit - a.fit; })
+        .filter(function (r) { return r.code !== winner.code; })[0];
+    }
+
+    // 置信度
+    var mbtiHit = winner.mbtiScore > 0;
+    var confidence;
+    if (!hasTime) confidence = '可能有趣';
+    else if (mbtiHit && winner.fit >= 3.8) confidence = '强共鸣';
+    else if (mbtiHit && winner.fit >= 2.5) confidence = '值得探索';
+    else if (!mbtiHit) confidence = '值得探索'; // 星盘翻盘当选
+    else confidence = '可能有趣';
+
+    return { winner: winner, confidence: confidence, hidden: hidden, board: board, profile: profile };
+  }
+
+  // 城市数据已拆分到 cities.js（省市两级 + 海外分组）
+
+  return {
+    SIGNS: SIGNS, SIGN_EN: SIGN_EN, SIGN_ELEMENT: SIGN_ELEMENT,
+    PERSONAS: PERSONAS, PERSONA_MAP: PERSONA_MAP,
+    MBTI_TABLE: MBTI_TABLE, CP: CP,
+    signIndex: signIndex, localToUTC: localToUTC,
+    eclipticLongitude: eclipticLongitude, ascendantLongitude: ascendantLongitude,
+    computeChart: computeChart, computeProfile: computeProfile,
+    fitScore: fitScore, computeResult: computeResult
+  };
+});
